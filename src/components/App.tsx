@@ -22,7 +22,6 @@ class App extends React.Component<{}, AppState> {
     fsm = new PunishmentStateMachine();
     settings = getSettings();
     diffy: any;
-    videoContainerRef = React.createRef<HTMLDivElement>();
 
     state: AppState = {
         setupScreen: 'default',
@@ -41,21 +40,9 @@ class App extends React.Component<{}, AppState> {
         if (process.env.NODE_ENV !== 'test') {
             this.diffy = create({
                 ...this.settings.diffy,
-                debug: true, // 1. CRITICAL: Force diffy to reveal the camera elements
+                debug: false, // Keeps the DOM clean from tracking canvases
                 onFrame: matrix => this.handleMotionUpdate(matrix),
             });
-        }
-    }
-
-    componentDidUpdate() {
-        // 2. Since diffyjs appends elements to the <body>, we check if our active screen container exists,
-        // and manually pull diffy's debug element into our container.
-        if (this.videoContainerRef.current && this.videoContainerRef.current.children.length === 0) {
-            // Diffy's default wrapper class name is 'diffy--debug-view'
-            const diffyElement = document.querySelector('.diffy--debug-view');
-            if (diffyElement) {
-                this.videoContainerRef.current.appendChild(diffyElement);
-            }
         }
     }
 
@@ -63,12 +50,24 @@ class App extends React.Component<{}, AppState> {
         this.fsm.removeListener(this.handleFsmUpdate);
     }
 
+    // Callback Ref: Runs as soon as the video container mounts to the DOM.
+    // It finds the video element instantiated by diffyjs and appends it here.
+    attachCameraContainer = (node: HTMLDivElement | null) => {
+        if (node && node.children.length === 0) {
+            const videoElement = document.querySelector('video');
+            if (videoElement) {
+                node.appendChild(videoElement);
+            }
+        }
+    };
+
     render() {
         const fsm = this.fsm;
 
+        // Render helper for the camera layout block
         const renderCamera = () => (
             <div 
-                ref={this.videoContainerRef} 
+                ref={this.attachCameraContainer} 
                 className="camera-container text-center my-4 d-flex justify-content-center"
             />
         );
