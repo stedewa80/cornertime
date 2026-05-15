@@ -7,3 +7,16 @@ body {
 .App {
     margin-top: 15px;
 }
+
+/* Force the diffy video element to be visible and positioned */
+video {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 240px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 999;
+    transform: scaleX(-1); /* Mirrors the camera so it feels natural */
+}
