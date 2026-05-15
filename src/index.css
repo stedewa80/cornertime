@@ -8,15 +8,10 @@ body {
     margin-top: 15px;
 }
 
-/* Force the diffy video element to be visible and positioned */
-video {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 240px;
+.camera-container video, 
+.camera-container canvas {
+    max-width: 100%;
     height: auto;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 999;
-    transform: scaleX(-1); /* Mirrors the camera so it feels natural */
+    border: 3px solid #333;
+    transform: scaleX(-1); /* Mirrors the camera feed so it feels natural to look at */
 }
