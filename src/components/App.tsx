@@ -22,7 +22,6 @@ class App extends React.Component<{}, AppState> {
     fsm = new PunishmentStateMachine();
     settings = getSettings();
     diffy: any;
-    // 1. Create a ref for the video container
     videoContainerRef = React.createRef<HTMLDivElement>();
 
     state: AppState = {
@@ -40,12 +39,23 @@ class App extends React.Component<{}, AppState> {
         }
 
         if (process.env.NODE_ENV !== 'test') {
-            // 2. Pass the container element to diffyjs
             this.diffy = create({
                 ...this.settings.diffy,
-                container: this.videoContainerRef.current, 
+                debug: true, // 1. CRITICAL: Force diffy to reveal the camera elements
                 onFrame: matrix => this.handleMotionUpdate(matrix),
             });
+        }
+    }
+
+    componentDidUpdate() {
+        // 2. Since diffyjs appends elements to the <body>, we check if our active screen container exists,
+        // and manually pull diffy's debug element into our container.
+        if (this.videoContainerRef.current && this.videoContainerRef.current.children.length === 0) {
+            // Diffy's default wrapper class name is 'diffy--debug-view'
+            const diffyElement = document.querySelector('.diffy--debug-view');
+            if (diffyElement) {
+                this.videoContainerRef.current.appendChild(diffyElement);
+            }
         }
     }
 
@@ -56,12 +66,10 @@ class App extends React.Component<{}, AppState> {
     render() {
         const fsm = this.fsm;
 
-        // 3. Helper to render the video feed wrapper
         const renderCamera = () => (
             <div 
                 ref={this.videoContainerRef} 
-                className="camera-container text-center my-4"
-                style={{ overflow: 'hidden', borderRadius: '8px' }}
+                className="camera-container text-center my-4 d-flex justify-content-center"
             />
         );
 
