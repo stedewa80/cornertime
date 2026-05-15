@@ -8,10 +8,18 @@ body {
     margin-top: 15px;
 }
 
-.camera-container video, 
-.camera-container canvas {
+.diffy--debug-view {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+}
+
+.diffy--debug-view video, 
+.diffy--debug-view canvas {
     max-width: 100%;
     height: auto;
+    border-radius: 8px;
     border: 3px solid #333;
-    transform: scaleX(-1); /* Mirrors the camera feed so it feels natural to look at */
+    transform: scaleX(-1); /* Mirrors the screen for a natural camera orientation */
 }
