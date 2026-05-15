@@ -11,7 +11,6 @@ import ReportViewer from './ReportViewer';
 import 'bootstrap/dist/css/bootstrap.css';
 import { formatDuration } from '../time';
 
-
 const MOTION_MAX = 255;
 type SetupScreen = 'default' | 'custom' | 'report' | 'preset';
 
@@ -19,11 +18,12 @@ interface AppState {
     setupScreen: SetupScreen;
 }
 
-
 class App extends React.Component<{}, AppState> {
     fsm = new PunishmentStateMachine();
     settings = getSettings();
     diffy: any;
+    // 1. Create a ref for the video container
+    videoContainerRef = React.createRef<HTMLDivElement>();
 
     state: AppState = {
         setupScreen: 'default',
@@ -40,8 +40,10 @@ class App extends React.Component<{}, AppState> {
         }
 
         if (process.env.NODE_ENV !== 'test') {
+            // 2. Pass the container element to diffyjs
             this.diffy = create({
                 ...this.settings.diffy,
+                container: this.videoContainerRef.current, 
                 onFrame: matrix => this.handleMotionUpdate(matrix),
             });
         }
@@ -53,6 +55,15 @@ class App extends React.Component<{}, AppState> {
 
     render() {
         const fsm = this.fsm;
+
+        // 3. Helper to render the video feed wrapper
+        const renderCamera = () => (
+            <div 
+                ref={this.videoContainerRef} 
+                className="camera-container text-center my-4"
+                style={{ overflow: 'hidden', borderRadius: '8px' }}
+            />
+        );
 
         switch (fsm.state) {
             case 'waiting':
@@ -76,14 +87,22 @@ class App extends React.Component<{}, AppState> {
 
             case 'preparation':
                 return (
-                    <h1 className="display-2 my-5 text-center">
-                        The punishment will start in {formatDuration(-fsm.currentTime)}.
-                    </h1>
+                    <div className="container text-center">
+                        <h1 className="display-2 my-5">
+                            The punishment will start in {formatDuration(-fsm.currentTime)}.
+                        </h1>
+                        {renderCamera()}
+                    </div>
                 );
 
             case 'punishment':
             case 'cooldown':
-                return <h1 className="display-1 my-5 text-center">{formatDuration(fsm.timeLeft)}</h1>;
+                return (
+                    <div className="container text-center">
+                        <h1 className="display-1 my-5">{formatDuration(fsm.timeLeft)}</h1>
+                        {renderCamera()}
+                    </div>
+                );
 
             case 'finished':
                 return <ReportCard report={fsm.report()} showMessage={true} />;
@@ -103,8 +122,6 @@ class App extends React.Component<{}, AppState> {
     }
 
     handleMotionUpdate = (matrix: number[][]) => {
-        // matrix elements seem to be 0–255 with 255 meaning "no movement", 0 meaning "chaos"
-        // we turn it into a a single number 0.0–1.0 by taking busiest cell
         const minValue = Math.min(...matrix.map(row => Math.min(...row)));
         const magnitude = (MOTION_MAX - minValue) / MOTION_MAX;
         this.fsm.handleMotionUpdate(magnitude);
