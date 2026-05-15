@@ -1,6 +1,6 @@
 {
   "files": {
-    "main.css": "/cornertime/static/css/main.96c07398.chunk.css",
+    "main.css": "/cornertime/static/css/main.9f1cf794.chunk.css",
     "main.js": "/cornertime/static/js/main.81a7347e.chunk.js",
     "main.js.map": "/cornertime/static/js/main.81a7347e.chunk.js.map",
     "runtime-main.js": "/cornertime/static/js/runtime-main.4581ea29.js",
@@ -9,17 +9,17 @@
     "static/js/2.ef13135c.chunk.js": "/cornertime/static/js/2.ef13135c.chunk.js",
     "static/js/2.ef13135c.chunk.js.map": "/cornertime/static/js/2.ef13135c.chunk.js.map",
     "index.html": "/cornertime/index.html",
-    "precache-manifest.583bbc0b696749b78cb35eb33c8e5c0a.js": "/cornertime/precache-manifest.583bbc0b696749b78cb35eb33c8e5c0a.js",
+    "precache-manifest.c95610593c73cc042a8672a5ce09a150.js": "/cornertime/precache-manifest.c95610593c73cc042a8672a5ce09a150.js",
     "service-worker.js": "/cornertime/service-worker.js",
     "static/css/2.0cee8fd6.chunk.css.map": "/cornertime/static/css/2.0cee8fd6.chunk.css.map",
-    "static/css/main.96c07398.chunk.css.map": "/cornertime/static/css/main.96c07398.chunk.css.map",
+    "static/css/main.9f1cf794.chunk.css.map": "/cornertime/static/css/main.9f1cf794.chunk.css.map",
     "static/js/2.ef13135c.chunk.js.LICENSE.txt": "/cornertime/static/js/2.ef13135c.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.4581ea29.js",
     "static/css/2.0cee8fd6.chunk.css",
     "static/js/2.ef13135c.chunk.js",
-    "static/css/main.96c07398.chunk.css",
+    "static/css/main.9f1cf794.chunk.css",
     "static/js/main.81a7347e.chunk.js"
   ]
 }
