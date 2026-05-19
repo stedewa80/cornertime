@@ -72,12 +72,44 @@ class App extends React.Component<{}, AppState> {
         }
     };
 
-    // Starts our dedicated visible webcam stream for the video tag
+        // Starts our dedicated visible webcam stream for the video tag
     startWebcam = async () => {
         if (this.stream) return; // Stream already running
 
         try {
-            const constraints = { video: { width: 640, height: 480, facingMode: "front" } };
+            // 1. Request initial temporary permissions to allow hardware scanning
+            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            
+            // 2. Scan all audio/video devices connected to the phone
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            // 3. Look explicitly for a device label containing 'front' or 'user'
+            let targetDeviceId = "";
+            for (const device of videoDevices) {
+                const label = device.label.toLowerCase();
+                if (label.includes('front') || label.includes('user') || label.includes('selfie')) {
+                    targetDeviceId = device.deviceId;
+                    break; // Found the front camera!
+                }
+            }
+
+            // Fallback: If labels are blank or no match found, pick the first available video camera
+            if (!targetDeviceId && videoDevices.length > 0) {
+                targetDeviceId = videoDevices[0].deviceId;
+            }
+
+            // 4. Kill the temporary stream so we don't duplicate sensors
+            tempStream.getTracks().forEach(track => track.stop());
+
+            // 5. Build rigid constraints targeting the exact hardware ID of your front camera
+            const constraints: any = {
+                video: targetDeviceId 
+                    ? { deviceId: { exact: targetDeviceId } } 
+                    : { facingMode: "user" } // Final string fallback
+            };
+
+            // 6. Request the confirmed front camera stream
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             
             if (this.videoRef.current) {
@@ -92,7 +124,7 @@ class App extends React.Component<{}, AppState> {
                 };
             }
         } catch (err) {
-            console.error("Error setting up camera stream:", err);
+            console.error("Error setting up hardware-targeted camera stream:", err);
         }
     };
 
