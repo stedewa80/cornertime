@@ -16,7 +16,7 @@ type SetupScreen = 'default' | 'custom' | 'report' | 'preset';
 
 interface AppState {
     setupScreen: SetupScreen;
-    isPersonDetected: boolean; // 1. Added State tracking for visibility
+    isPersonDetected: boolean;
 }
 
 class App extends React.Component<{}, AppState> {
@@ -24,14 +24,15 @@ class App extends React.Component<{}, AppState> {
     settings = getSettings();
     diffy: any;
     
-    // TensorFlow tracking variables
+    // Video and TensorFlow refs
+    videoRef = React.createRef<HTMLVideoElement>();
     tfModel: any = null;
-    videoElement: HTMLVideoElement | null = null;
-    isDetectingLoopActive: boolean = false; // Internal tracking loop controller
+    isDetectingLoopActive: boolean = false;
+    stream: MediaStream | null = null;
 
     state: AppState = {
         setupScreen: 'default',
-        isPersonDetected: false, // Default to no one present
+        isPersonDetected: false,
     };
 
     componentDidMount() {
@@ -46,7 +47,7 @@ class App extends React.Component<{}, AppState> {
         if (process.env.NODE_ENV !== 'test') {
             this.diffy = create({
                 ...this.settings.diffy,
-                debug: false,
+                debug: false, // Leave diffy completely invisible
                 onFrame: matrix => this.handleMotionUpdate(matrix),
             });
         }
@@ -56,7 +57,7 @@ class App extends React.Component<{}, AppState> {
 
     componentWillUnmount() {
         this.fsm.removeListener(this.handleFsmUpdate);
-        this.isDetectingLoopActive = false; // Stop the detection loop on exit
+        this.stopWebcamAndDetection();
     }
 
     initTensorFlow = async () => {
@@ -64,54 +65,67 @@ class App extends React.Component<{}, AppState> {
         if (globalWindow.cocoSsd) {
             try {
                 this.tfModel = await globalWindow.cocoSsd.load();
-                console.log("TensorFlow COCO-SSD Model Loaded successfully!");
+                console.log("TensorFlow COCO-SSD loaded successfully!");
             } catch (err) {
                 console.error("Failed to load TensorFlow model:", err);
             }
         }
     };
 
-    attachCameraContainer = (node: HTMLDivElement | null) => {
-        if (node && node.children.length === 0) {
-            const video = document.querySelector('video');
-            if (video) {
-                node.appendChild(video);
-                this.videoElement = video;
+    // Starts our dedicated visible webcam stream for the video tag
+    startWebcam = async () => {
+        if (this.stream) return; // Stream already running
+
+        try {
+            const constraints = { video: { width: 640, height: 480 } };
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            if (this.videoRef.current) {
+                this.videoRef.current.srcObject = this.stream;
                 
-                // Start tracking if the model is ready and we aren't already looping
-                if (this.tfModel && !this.isDetectingLoopActive) {
-                    this.isDetectingLoopActive = true;
-                    this.runPersonDetection();
-                }
+                // Kick off AI tracking once video metadata has loaded
+                this.videoRef.current.onloadedmetadata = () => {
+                    if (this.tfModel && !this.isDetectingLoopActive) {
+                        this.isDetectingLoopActive = true;
+                        this.runPersonDetection();
+                    }
+                };
             }
+        } catch (err) {
+            console.error("Error setting up camera stream:", err);
+        }
+    };
+
+    stopWebcamAndDetection = () => {
+        this.isDetectingLoopActive = false;
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
         }
     };
 
     runPersonDetection = async () => {
-        if (!this.isDetectingLoopActive || !this.videoElement || !this.tfModel) return;
+        if (!this.isDetectingLoopActive || !this.videoRef.current || !this.tfModel) return;
 
         let detectedInThisFrame = false;
 
         try {
-            // Ask TensorFlow to look at the current frame
-            const predictions = await this.tfModel.detect(this.videoElement);
-            
-            // 2. Scan predictions specifically for 'person'
-            detectedInThisFrame = predictions.some(
-                (p: any) => p.class === 'person' && p.score > 0.6 // Adjust confidence if needed
-            );
-
+            // Check that the video is actually ready to be processed
+            if (this.videoRef.current.readyState >= 2) {
+                const predictions = await this.tfModel.detect(this.videoRef.current);
+                detectedInThisFrame = predictions.some(
+                    (p: any) => p.class === 'person' && p.score > 0.55
+                );
+            }
         } catch (e) {
-            console.error("Detection error:", e);
+            console.error("AI Detection error:", e);
         }
 
-        // 3. Update React state if the visibility status changed (minimizes re-renders)
         if (detectedInThisFrame !== this.state.isPersonDetected) {
             this.setState({ isPersonDetected: detectedInThisFrame });
-            // console.log(detectedInThisFrame ? "RED FRAME ACTIVE" : "GREEN FRAME ACTIVE");
         }
 
-        // Mobile performance optimization: Scan every 250ms (4 times per second)
+        // Check 4 times a second (250ms) to preserve battery life on mobile browsers
         if (this.isDetectingLoopActive) {
             setTimeout(() => this.runPersonDetection(), 250);
         }
@@ -120,45 +134,56 @@ class App extends React.Component<{}, AppState> {
     render() {
         const fsm = this.fsm;
 
-        // 4. Update helper: Generate classes based on state
+        // Render helper containing a standard, secure HTML5 video element
         const renderCamera = () => {
+            // Trigger stream activation when this element layout renders
+            this.startWebcam();
+
             let containerClasses = "camera-container text-center my-4 d-flex justify-content-center";
-            
-            // Apply the activation class if a person is detected
             if (this.state.isPersonDetected) {
                 containerClasses += " person-present";
             } else {
-                containerClasses += " person-missing"; // Optional default style
+                containerClasses += " person-missing";
             }
 
             return (
-                <div 
-                    ref={this.attachCameraContainer} 
-                    className={containerClasses}
-                />
+                <div className={containerClasses}>
+                    <video 
+                        ref={this.videoRef} 
+                        autoPlay 
+                        playsInline 
+                        muted 
+                    />
+                </div>
             );
         };
 
-        switch (fsm.state) {
-            case 'waiting':
-                switch (this.state.setupScreen) {
-                    case 'custom':
-                        return <PunishmentSetup fsm={fsm} onBack={this.returnToWelcomeScreen} />;
-                    case 'preset':
-                        return <PunishmentLoader fsm={fsm} onBack={this.returnToWelcomeScreen} />;
-                    case 'report':
-                        return <ReportViewer onBack={this.returnToWelcomeScreen} />;
-                    default:
-                        return (
-                            <WelcomeScreen
-                                fsm={fsm}
-                                onCustom={this.setUpCustom}
-                                onPreset={this.loadPreset}
-                                onReport={this.viewReport}
-                            />
-                        );
-                }
+        // Reset camera stream tracking if we return to the configuration screens
+        if (fsm.state === 'waiting') {
+            if (this.isDetectingLoopActive) {
+                this.stopWebcamAndDetection();
+            }
+            
+            switch (this.state.setupScreen) {
+                case 'custom':
+                    return <PunishmentSetup fsm={fsm} onBack={this.returnToWelcomeScreen} />;
+                case 'preset':
+                    return <PunishmentLoader fsm={fsm} onBack={this.returnToWelcomeScreen} />;
+                case 'report':
+                    return <ReportViewer onBack={this.returnToWelcomeScreen} />;
+                default:
+                    return (
+                        <WelcomeScreen
+                            fsm={fsm}
+                            onCustom={this.setUpCustom}
+                            onPreset={this.loadPreset}
+                            onReport={this.viewReport}
+                        />
+                    );
+            }
+        }
 
+        switch (fsm.state) {
             case 'preparation':
                 return (
                     <div className="container text-center">
@@ -179,6 +204,7 @@ class App extends React.Component<{}, AppState> {
                 );
 
             case 'finished':
+                if (this.isDetectingLoopActive) this.stopWebcamAndDetection();
                 return <ReportCard report={fsm.report()} showMessage={true} />;
 
             default:
