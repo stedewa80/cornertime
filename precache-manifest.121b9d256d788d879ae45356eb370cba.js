@@ -1,27 +1,27 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "80bb73c5740b8cf987d3cdbdaa5bda9a",
+    "revision": "3a39a639e6aff6b145db2d9752315cf6",
     "url": "/cornertime/index.html"
   },
   {
-    "revision": "724bafb81b04424499fb",
+    "revision": "a78f102cd37869cc4dfb",
     "url": "/cornertime/static/css/2.0cee8fd6.chunk.css"
   },
   {
-    "revision": "faaed8a4b01516bc1ce2",
+    "revision": "f3b9a2772ccf8d32043c",
     "url": "/cornertime/static/css/main.bd4995d1.chunk.css"
   },
   {
-    "revision": "724bafb81b04424499fb",
-    "url": "/cornertime/static/js/2.e75d047a.chunk.js"
+    "revision": "a78f102cd37869cc4dfb",
+    "url": "/cornertime/static/js/2.d399f015.chunk.js"
   },
   {
     "revision": "809f8196affeaac0e5176b72b79c267c",
-    "url": "/cornertime/static/js/2.e75d047a.chunk.js.LICENSE.txt"
+    "url": "/cornertime/static/js/2.d399f015.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "faaed8a4b01516bc1ce2",
-    "url": "/cornertime/static/js/main.60b89fd8.chunk.js"
+    "revision": "f3b9a2772ccf8d32043c",
+    "url": "/cornertime/static/js/main.ad7fcaee.chunk.js"
   },
   {
     "revision": "3c85126fc35e7928a26b",
