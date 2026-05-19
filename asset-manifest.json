@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/cornertime/static/css/main.bd4995d1.chunk.css",
-    "main.js": "/cornertime/static/js/main.acfa3ac3.chunk.js",
-    "main.js.map": "/cornertime/static/js/main.acfa3ac3.chunk.js.map",
+    "main.js": "/cornertime/static/js/main.01a93551.chunk.js",
+    "main.js.map": "/cornertime/static/js/main.01a93551.chunk.js.map",
     "runtime-main.js": "/cornertime/static/js/runtime-main.4581ea29.js",
     "runtime-main.js.map": "/cornertime/static/js/runtime-main.4581ea29.js.map",
     "static/css/2.0cee8fd6.chunk.css": "/cornertime/static/css/2.0cee8fd6.chunk.css",
     "static/js/2.d399f015.chunk.js": "/cornertime/static/js/2.d399f015.chunk.js",
     "static/js/2.d399f015.chunk.js.map": "/cornertime/static/js/2.d399f015.chunk.js.map",
     "index.html": "/cornertime/index.html",
-    "precache-manifest.539d9fbc3ac644f593c31bbfc0830ee3.js": "/cornertime/precache-manifest.539d9fbc3ac644f593c31bbfc0830ee3.js",
+    "precache-manifest.c0e2d3d819717582521afe11ca880d10.js": "/cornertime/precache-manifest.c0e2d3d819717582521afe11ca880d10.js",
     "service-worker.js": "/cornertime/service-worker.js",
     "static/css/2.0cee8fd6.chunk.css.map": "/cornertime/static/css/2.0cee8fd6.chunk.css.map",
     "static/css/main.bd4995d1.chunk.css.map": "/cornertime/static/css/main.bd4995d1.chunk.css.map",
@@ -20,6 +20,6 @@
     "static/css/2.0cee8fd6.chunk.css",
     "static/js/2.d399f015.chunk.js",
     "static/css/main.bd4995d1.chunk.css",
-    "static/js/main.acfa3ac3.chunk.js"
+    "static/js/main.01a93551.chunk.js"
   ]
 }
