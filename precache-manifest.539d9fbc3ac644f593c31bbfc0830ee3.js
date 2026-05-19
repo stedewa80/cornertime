@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "3a39a639e6aff6b145db2d9752315cf6",
+    "revision": "2ea1965af1bfbdd3c53f18e581e43aba",
     "url": "/cornertime/index.html"
   },
   {
@@ -8,7 +8,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/cornertime/static/css/2.0cee8fd6.chunk.css"
   },
   {
-    "revision": "f3b9a2772ccf8d32043c",
+    "revision": "abaa1396e74dfcc544f4",
     "url": "/cornertime/static/css/main.bd4995d1.chunk.css"
   },
   {
@@ -20,8 +20,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/cornertime/static/js/2.d399f015.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "f3b9a2772ccf8d32043c",
-    "url": "/cornertime/static/js/main.ad7fcaee.chunk.js"
+    "revision": "abaa1396e74dfcc544f4",
+    "url": "/cornertime/static/js/main.acfa3ac3.chunk.js"
   },
   {
     "revision": "3c85126fc35e7928a26b",
