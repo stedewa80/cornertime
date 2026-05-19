@@ -27,7 +27,7 @@ class App extends React.Component<{}, AppState> {
     videoRef = React.createRef<HTMLVideoElement>();
     tfModel: any = null;
     isDetectingLoopActive: boolean = false;
-    stream: MediaStream | null = null;
+    sharedStream: MediaStream | null = null;
 
     state: AppState = {
         setupScreen: 'default',
@@ -43,70 +43,69 @@ class App extends React.Component<{}, AppState> {
             anyWindow.cornertime.fsm = this.fsm;
         }
 
-        // 1. Kickstart the secure front camera selection first before initializing diffyjs
-        this.initCameraAndLibraries();
+        // Initialize TensorFlow and Intercept Camera Stream for Front Facing Mode
+        this.initAppSystems();
     }
 
     componentWillUnmount() {
         this.fsm.removeListener(this.handleFsmUpdate);
-        this.stopWebcamAndDetection();
+        this.stopDetectionAndTracks();
     }
 
-    initCameraAndLibraries = async () => {
-        // Load TensorFlow globally
+    initAppSystems = async () => {
+        // 1. Load the TensorFlow COCO-SSD script model globally
         const globalWindow = window as any;
         if (globalWindow.cocoSsd) {
             try {
                 this.tfModel = await globalWindow.cocoSsd.load();
-                console.log("TensorFlow COCO-SSD loaded!");
+                console.log("TensorFlow loaded successfully!");
             } catch (err) {
                 console.error("Failed to load TensorFlow model:", err);
             }
         }
 
-        // 2. Explicitly spin up the front camera stream immediately
-        try {
-            const constraints = { 
-                video: { 
-                    width: 640, 
-                    height: 480,
-                    facingMode: { exact: "user" } // Force mobile browser to pick front camera
-                } 
-            };
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-            
-            // Link our managed front camera stream to diffyjs settings
-            if (process.env.NODE_ENV !== 'test') {
-                this.diffy = create({
-                    ...this.settings.diffy,
-                    debug: false,
-                    stream: this.stream, // Pass our direct front-facing stream into diffyjs
-                    onFrame: matrix => this.handleMotionUpdate(matrix),
-                });
-            }
-        } catch (err) {
-            console.error("Front camera initialization failed, trying fallback:", err);
-            // Relaxed string fallback if hardware constraints are strict on certain phone browsers
-            try {
-                this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                if (process.env.NODE_ENV !== 'test') {
-                    this.diffy = create({
-                        ...this.settings.diffy,
-                        debug: false,
-                        stream: this.stream,
-                        onFrame: matrix => this.handleMotionUpdate(matrix),
-                    });
+        if (process.env.NODE_ENV === 'test') return;
+
+        // 2. Intercept getUserMedia globally to force front camera on mobile devices
+        const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        const self = this;
+
+        navigator.mediaDevices.getUserMedia = async function(constraints) {
+            const forcedConstraints = {
+                audio: constraints ? constraints.audio : false,
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: "user" // Hard forces the selfie lens layout configuration
                 }
-            } catch (fallbackErr) {
-                console.error("Complete camera capture failure:", fallbackErr);
-            }
+            };
+
+            // Capture the created stream reference so we can use it on the website
+            const stream = await originalGetUserMedia(forcedConstraints);
+            self.sharedStream = stream;
+            
+            // Re-bind the stream to our visual UI player frame if it's currently rendered
+            self.bindStreamToUIVideo();
+
+            return stream;
+        };
+
+        // 3. Let diffyjs initialize. It will call our intercepted getUserMedia and get the front camera
+        try {
+            this.diffy = create({
+                ...this.settings.diffy,
+                debug: false,
+                onFrame: matrix => this.handleMotionUpdate(matrix),
+            });
+        } catch (e) {
+            console.error("Diffy initialization exception:", e);
         }
     };
 
-    // Safely links the stream to our visual HTML player when transitioning onto punishment layouts
-    bindStreamToVideoTag = () => {
-        if (this.stream && this.videoRef.current && !this.videoRef.current.srcObject) {
-            this.videoRef.current.srcObject = this.stream;
+    // Safely binds the active stream to our custom on-screen player HTML tag
+    bindStreamToUIVideo = () => {
+        if (this.sharedStream && this.videoRef.current && !this.videoRef.current.srcObject) {
+            this.videoRef.current.srcObject = this.sharedStream;
             
             this.videoRef.current.onloadedmetadata = () => {
                 if (this.tfModel && !this.isDetectingLoopActive) {
@@ -117,11 +116,11 @@ class App extends React.Component<{}, AppState> {
         }
     };
 
-    stopWebcamAndDetection = () => {
+    stopDetectionAndTracks = () => {
         this.isDetectingLoopActive = false;
-        if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
-            this.stream = null;
+        if (this.sharedStream) {
+            this.sharedStream.getTracks().forEach(track => track.stop());
+            this.sharedStream = null;
         }
     };
 
@@ -131,6 +130,7 @@ class App extends React.Component<{}, AppState> {
         let detectedInThisFrame = false;
 
         try {
+            // Confirm the player frame data has safely buffer loaded
             if (this.videoRef.current.readyState >= 2) {
                 const predictions = await this.tfModel.detect(this.videoRef.current);
                 detectedInThisFrame = predictions.some(
@@ -138,13 +138,14 @@ class App extends React.Component<{}, AppState> {
                 );
             }
         } catch (e) {
-            console.error("AI Detection error:", e);
+            console.error("AI Detection computation error:", e);
         }
 
         if (detectedInThisFrame !== this.state.isPersonDetected) {
             this.setState({ isPersonDetected: detectedInThisFrame });
         }
 
+        // Loop detection 4 times per second to maximize device battery efficiency
         if (this.isDetectingLoopActive) {
             setTimeout(() => this.runPersonDetection(), 250);
         }
@@ -154,8 +155,8 @@ class App extends React.Component<{}, AppState> {
         const fsm = this.fsm;
 
         const renderCamera = () => {
-            // Trigger stream loading to player interface safely on mount
-            setTimeout(() => this.bindStreamToVideoTag(), 50);
+            // Trigger stream loading contextually when component updates layouts
+            setTimeout(() => this.bindStreamToUIVideo(), 50);
 
             let containerClasses = "camera-container text-center my-4 d-flex justify-content-center";
             if (this.state.isPersonDetected) {
@@ -191,7 +192,7 @@ class App extends React.Component<{}, AppState> {
                             onCustom={this.setUpCustom}
                             onPreset={this.loadPreset}
                             onReport={this.viewReport}
-                            />
+                        />
                     );
             }
         }
