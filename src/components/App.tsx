@@ -77,7 +77,7 @@ class App extends React.Component<{}, AppState> {
         if (this.stream) return; // Stream already running
 
         try {
-            const constraints = { video: { width: 640, height: 480, facingMode: "user" } };
+            const constraints = { video: { width: 640, height: 480, facingMode: "front" } };
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             
             if (this.videoRef.current) {
