@@ -8,23 +8,42 @@ body {
     margin-top: 15px;
 }
 
-/* Ensure the camera container centers its contents nicely */
+/* Base container style for the camera view */
 .camera-container {
     width: 100%;
     max-width: 640px;
     margin: 0 auto;
+    border-radius: 16px;
+    
+    /* Pre-defines the border area so the layout doesn't shift when active */
+    border: 6px solid #444; /* Standard neutral border when no person detected */
+    
+    transition: border-color 0.25s ease, box-shadow 0.25s ease; /* Smooth feedback animation */
+    overflow: hidden; /* Ensures video stays inside rounded corners */
 }
 
-/* Force the raw video stream element to display beautifully */
+/* Style FORCED onto the raw video element inside */
 .camera-container video {
     display: block !important;
     visibility: visible !important;
     width: 100% !important;
     height: auto !important;
-    border-radius: 12px;
-    border: 4px solid #333;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform: scaleX(-1); /* Mirrors horizontally */
     
-    /* Mirrors the feed horizontally so right behaves like right */
-    transform: scaleX(-1); 
+    /* Prevents the video's default border radius from showing */
+    border: none !important; 
+    box-shadow: none !important;
 }
+
+/* ACTIVATION CLASS: When TensorFlow sees a person */
+.camera-container.person-present {
+    border-color: #ff3333 !important; /* The RED border */
+    box-shadow: 0 0 20px rgba(255, 51, 51, 0.6); /* Red Outer Glow feedback */
+}
+
+/* Optional: Default green feedback state */
+/*
+.camera-container.person-missing {
+    border-color: #28a745;
+}
+*/
