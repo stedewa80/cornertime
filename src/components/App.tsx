@@ -24,7 +24,6 @@ class App extends React.Component<{}, AppState> {
     settings = getSettings();
     diffy: any;
     
-    // Video and TensorFlow refs
     videoRef = React.createRef<HTMLVideoElement>();
     tfModel: any = null;
     isDetectingLoopActive: boolean = false;
@@ -44,15 +43,8 @@ class App extends React.Component<{}, AppState> {
             anyWindow.cornertime.fsm = this.fsm;
         }
 
-        if (process.env.NODE_ENV !== 'test') {
-            this.diffy = create({
-                ...this.settings.diffy,
-                debug: false, // Leave diffy completely invisible
-                onFrame: matrix => this.handleMotionUpdate(matrix),
-            });
-        }
-
-        this.initTensorFlow();
+        // 1. Kickstart the secure front camera selection first before initializing diffyjs
+        this.initCameraAndLibraries();
     }
 
     componentWillUnmount() {
@@ -60,71 +52,68 @@ class App extends React.Component<{}, AppState> {
         this.stopWebcamAndDetection();
     }
 
-    initTensorFlow = async () => {
+    initCameraAndLibraries = async () => {
+        // Load TensorFlow globally
         const globalWindow = window as any;
         if (globalWindow.cocoSsd) {
             try {
                 this.tfModel = await globalWindow.cocoSsd.load();
-                console.log("TensorFlow COCO-SSD loaded successfully!");
+                console.log("TensorFlow COCO-SSD loaded!");
             } catch (err) {
                 console.error("Failed to load TensorFlow model:", err);
             }
         }
-    };
 
-        // Starts our dedicated visible webcam stream for the video tag
-    startWebcam = async () => {
-        if (this.stream) return; // Stream already running
-
+        // 2. Explicitly spin up the front camera stream immediately
         try {
-            // 1. Request initial temporary permissions to allow hardware scanning
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            
-            // 2. Scan all audio/video devices connected to the phone
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            
-            // 3. Look explicitly for a device label containing 'front' or 'user'
-            let targetDeviceId = "";
-            for (const device of videoDevices) {
-                const label = device.label.toLowerCase();
-                if (label.includes('front') || label.includes('user') || label.includes('selfie')) {
-                    targetDeviceId = device.deviceId;
-                    break; // Found the front camera!
-                }
-            }
-
-            // Fallback: If labels are blank or no match found, pick the first available video camera
-            if (!targetDeviceId && videoDevices.length > 0) {
-                targetDeviceId = videoDevices[0].deviceId;
-            }
-
-            // 4. Kill the temporary stream so we don't duplicate sensors
-            tempStream.getTracks().forEach(track => track.stop());
-
-            // 5. Build rigid constraints targeting the exact hardware ID of your front camera
-            const constraints: any = {
-                video: targetDeviceId 
-                    ? { deviceId: { exact: targetDeviceId } } 
-                    : { facingMode: "user" } // Final string fallback
+            const constraints = { 
+                video: { 
+                    width: 640, 
+                    height: 480,
+                    facingMode: { exact: "user" } // Force mobile browser to pick front camera
+                } 
             };
-
-            // 6. Request the confirmed front camera stream
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             
-            if (this.videoRef.current) {
-                this.videoRef.current.srcObject = this.stream;
-                
-                // Kick off AI tracking once video metadata has loaded
-                this.videoRef.current.onloadedmetadata = () => {
-                    if (this.tfModel && !this.isDetectingLoopActive) {
-                        this.isDetectingLoopActive = true;
-                        this.runPersonDetection();
-                    }
-                };
+            // Link our managed front camera stream to diffyjs settings
+            if (process.env.NODE_ENV !== 'test') {
+                this.diffy = create({
+                    ...this.settings.diffy,
+                    debug: false,
+                    stream: this.stream, // Pass our direct front-facing stream into diffyjs
+                    onFrame: matrix => this.handleMotionUpdate(matrix),
+                });
             }
         } catch (err) {
-            console.error("Error setting up hardware-targeted camera stream:", err);
+            console.error("Front camera initialization failed, trying fallback:", err);
+            // Relaxed string fallback if hardware constraints are strict on certain phone browsers
+            try {
+                this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                if (process.env.NODE_ENV !== 'test') {
+                    this.diffy = create({
+                        ...this.settings.diffy,
+                        debug: false,
+                        stream: this.stream,
+                        onFrame: matrix => this.handleMotionUpdate(matrix),
+                    });
+                }
+            } catch (fallbackErr) {
+                console.error("Complete camera capture failure:", fallbackErr);
+            }
+        }
+    };
+
+    // Safely links the stream to our visual HTML player when transitioning onto punishment layouts
+    bindStreamToVideoTag = () => {
+        if (this.stream && this.videoRef.current && !this.videoRef.current.srcObject) {
+            this.videoRef.current.srcObject = this.stream;
+            
+            this.videoRef.current.onloadedmetadata = () => {
+                if (this.tfModel && !this.isDetectingLoopActive) {
+                    this.isDetectingLoopActive = true;
+                    this.runPersonDetection();
+                }
+            };
         }
     };
 
@@ -142,7 +131,6 @@ class App extends React.Component<{}, AppState> {
         let detectedInThisFrame = false;
 
         try {
-            // Check that the video is actually ready to be processed
             if (this.videoRef.current.readyState >= 2) {
                 const predictions = await this.tfModel.detect(this.videoRef.current);
                 detectedInThisFrame = predictions.some(
@@ -157,7 +145,6 @@ class App extends React.Component<{}, AppState> {
             this.setState({ isPersonDetected: detectedInThisFrame });
         }
 
-        // Check 4 times a second (250ms) to preserve battery life on mobile browsers
         if (this.isDetectingLoopActive) {
             setTimeout(() => this.runPersonDetection(), 250);
         }
@@ -166,10 +153,9 @@ class App extends React.Component<{}, AppState> {
     render() {
         const fsm = this.fsm;
 
-        // Render helper containing a standard, secure HTML5 video element
         const renderCamera = () => {
-            // Trigger stream activation when this element layout renders
-            this.startWebcam();
+            // Trigger stream loading to player interface safely on mount
+            setTimeout(() => this.bindStreamToVideoTag(), 50);
 
             let containerClasses = "camera-container text-center my-4 d-flex justify-content-center";
             if (this.state.isPersonDetected) {
@@ -190,12 +176,7 @@ class App extends React.Component<{}, AppState> {
             );
         };
 
-        // Reset camera stream tracking if we return to the configuration screens
         if (fsm.state === 'waiting') {
-            if (this.isDetectingLoopActive) {
-                this.stopWebcamAndDetection();
-            }
-            
             switch (this.state.setupScreen) {
                 case 'custom':
                     return <PunishmentSetup fsm={fsm} onBack={this.returnToWelcomeScreen} />;
@@ -210,7 +191,7 @@ class App extends React.Component<{}, AppState> {
                             onCustom={this.setUpCustom}
                             onPreset={this.loadPreset}
                             onReport={this.viewReport}
-                        />
+                            />
                     );
             }
         }
@@ -236,7 +217,6 @@ class App extends React.Component<{}, AppState> {
                 );
 
             case 'finished':
-                if (this.isDetectingLoopActive) this.stopWebcamAndDetection();
                 return <ReportCard report={fsm.report()} showMessage={true} />;
 
             default:
